@@ -1,22 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 
 import PersonProfile from '@/components/PersonProfile';
 import OccupanciesTable from '@/components/OccupanciesTable';
+import Section from '@/components/layout/Section';
+import { AdjacentEntities } from '@/lib/types';
 
-export default function PoliticianShowcase({ persons }: { persons: any[] }) {
+export default function PoliticianShowcase({
+  persons,
+}: {
+  persons: AdjacentEntities[];
+}) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selected = persons[selectedIndex] ?? null;
   const occupancies = selected?.adjacent.positionOccupancies?.results ?? [];
 
   return (
-    <Container>
-      <Row className="py-5 my-5">
+    <Section>
+      <Row>
         <Col md={4}>
           <h3>What&apos;s a politician?</h3>
           <p>
@@ -57,6 +62,6 @@ export default function PoliticianShowcase({ persons }: { persons: any[] }) {
           </Col>
         )}
       </Row>
-    </Container>
+    </Section>
   );
 }

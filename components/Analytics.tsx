@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import Script from 'next/script';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-import { GA_TRACKING_ID } from '../lib/constants';
+import { GA_TRACKING_ID, OSA_URL } from '../lib/constants';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -42,18 +42,38 @@ function Analytics() {
   );
 }
 
-export default function AnalyticsManager() {
-  const [consent, setConsent] = useState('loading');
+const CONSENT_KEY = 'analytics-consent';
 
-  useEffect(() => {
-    const storedConsent = localStorage.getItem('analytics-consent') || 'ask';
-    setConsent(storedConsent);
-  }, []);
+const consentListeners = new Set<() => void>();
 
-  const configureConsent = (consent: string) => {
-    localStorage.setItem('analytics-consent', consent);
-    setConsent(consent);
+function subscribeConsent(onChange: () => void) {
+  consentListeners.add(onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    consentListeners.delete(onChange);
+    window.removeEventListener('storage', onChange);
   };
+}
+
+function readConsent() {
+  return localStorage.getItem(CONSENT_KEY) || 'ask';
+}
+
+function readConsentOnServer() {
+  return 'loading';
+}
+
+function configureConsent(consent: string) {
+  localStorage.setItem(CONSENT_KEY, consent);
+  for (const onChange of consentListeners) onChange();
+}
+
+export default function AnalyticsManager() {
+  const consent = useSyncExternalStore(
+    subscribeConsent,
+    readConsent,
+    readConsentOnServer,
+  );
 
   if (consent === 'granted') {
     return <Analytics />;
@@ -73,11 +93,18 @@ export default function AnalyticsManager() {
               people use the service.
               <br />
               For more information, read our{' '}
-              <Link href="/about/privacy/">privacy policy</Link>.
+              <Link href={`${OSA_URL}/docs/privacy/`} prefetch={false}>
+                privacy policy
+              </Link>
+              .
             </p>
             <p className="d-block d-md-none">
               We use analytics to better understand how people use our service.
-              Read our <Link href="/about/privacy/">privacy policy</Link>.
+              Read our{' '}
+              <Link href={`${OSA_URL}/docs/privacy/`} prefetch={false}>
+                privacy policy
+              </Link>
+              .
             </p>
           </Col>
           <Col md="3" xs="5" className="text-end">

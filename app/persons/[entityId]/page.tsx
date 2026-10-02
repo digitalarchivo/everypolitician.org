@@ -1,15 +1,17 @@
 import { notFound, redirect } from 'next/navigation';
 import Script from 'next/script';
 
+import ContributeSection from '@/components/ContributeSection';
 import DataSourcesSection from '@/components/DataSourcesSection';
 import ExternalLinks from '@/components/ExternalLinks';
 import { Hero } from '@/components/Hero';
 import LayoutFrame from '@/components/layout/LayoutFrame';
 import OccupanciesTable from '@/components/OccupanciesTable';
 import PersonProfile from '@/components/PersonProfile';
-import Container from 'react-bootstrap/Container';
+import Section from '@/components/layout/Section';
+import { POLILOOM_URL } from '@/lib/constants';
 import { getAdjacent, getEntityDatasets } from '@/lib/data';
-import { getSchemaEntityPage } from '@/lib/schema';
+import { getSchemaEntityPage, safeJsonLd } from '@/lib/schema';
 import { getFirst, getEntityProperty } from '@/lib/types';
 
 export const maxDuration = 25;
@@ -29,8 +31,8 @@ export async function generateMetadata({ params }: PersonPageProps) {
 
   // Find newest position (sort by startDate descending, nulls last)
   const newestOccupancy = occupancies
-    .filter((occ: any) => getEntityProperty(occ, 'post')[0])
-    .sort((a: any, b: any) => {
+    .filter((occ) => getEntityProperty(occ, 'post')[0])
+    .sort((a, b) => {
       const dateA = getFirst(a, 'startDate') ?? '';
       const dateB = getFirst(b, 'startDate') ?? '';
       return dateB.localeCompare(dateA);
@@ -69,7 +71,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
     ...(data.adjacent['familyPerson']?.results ?? []),
     ...(data.adjacent['familyRelative']?.results ?? []),
   ]
-    .map((family: any) => family.properties?.relative?.[0]?.caption)
+    .map((family) => getEntityProperty(family, 'relative')[0]?.caption)
     .filter(Boolean);
 
   return (
@@ -78,11 +80,11 @@ export default async function PersonPage({ params }: PersonPageProps) {
         <Script
           type="application/ld+json"
           id="json-ld"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structured) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(structured) }}
         />
       )}
       <Hero title={person.caption} size="small" />
-      <Container className="py-5">
+      <Section>
         <section id="factsheet" className="mb-5">
           <h2 className="d-flex align-items-center">
             Profile
@@ -95,9 +97,36 @@ export default async function PersonPage({ params }: PersonPageProps) {
           <h2>Positions held</h2>
           <OccupanciesTable occupancies={occupancies} />
         </section>
+      </Section>
 
+      <ContributeSection
+        heading="Something incorrect or missing?"
+        description={
+          <>
+            Our data is compiled from public sources and community contributions
+            — it may sometimes be incomplete or out of date.{' '}
+            <a href="/about/contribute/">Help us improve it.</a>
+          </>
+        }
+        cards={[
+          {
+            title: 'PoliLoom',
+            description: `Help verify and add information about ${person.caption} extracted from the web.`,
+            href: `${POLILOOM_URL}/politician/${getFirst(person, 'wikidataId')}`,
+            label: `Enrich ${person.caption}`,
+          },
+          {
+            title: 'Wikidata',
+            description: `Edit ${person.caption}'s entry directly on Wikidata, the open knowledge base.`,
+            href: `https://www.wikidata.org/wiki/${getFirst(person, 'wikidataId')}`,
+            label: `Edit on Wikidata`,
+          },
+        ]}
+      />
+
+      <Section>
         <DataSourcesSection datasets={datasets} />
-      </Container>
+      </Section>
     </LayoutFrame>
   );
 }
